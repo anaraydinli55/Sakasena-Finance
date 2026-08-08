@@ -30,14 +30,6 @@ const CONTRACT_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)"
 ];
 
-interface TxLog {
-  id: string;
-  type: "Mint" | "Transfer" | "Approve";
-  amount: string;
-  target: string;
-  hash: string;
-}
-
 export default function App() {
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -162,6 +154,12 @@ export default function App() {
         throw new Error("Tarayicinizda MetaMask yuklu olmalidir!");
       }
 
+      // 🌟 ZORUNLU CÜZDAN SEÇİM VE GİRİŞ İZNİ (APPROVE) EKRANININ AÇILMASI
+      await (window as any).ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }]
+      });
+
       const provider = new BrowserProvider((window as any).ethereum);
       const accounts = await provider.send("eth_requestAccounts", []);
       const signer = await provider.getSigner();
@@ -169,7 +167,7 @@ export default function App() {
       const network = await provider.getNetwork();
       const currentChainId = Number(network.chainId);
 
-      // 🌟 ZORUNLU SEPOLIA ETHEREUM KONTROLÜ (İlk bağlantı anı)
+      // ZORUNLU SEPOLIA ETHEREUM KONTROLÜ (İlk bağlantı anı)
       if (!chainId && currentChainId !== 11155111) {
         setStatus("Hatali Ag! Otomatik olarak Ethereum Sepolia siber agina gecis yapiliyor...");
         try {
@@ -190,7 +188,7 @@ export default function App() {
       setChainId(currentChainId);
       setAccount(accounts[0]);
 
-      setStatus("CoFHE coklu-zincir siber motoru yukleniyor...");
+      setStatus("CoFHE siber motoru yukleniyor...");
       const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
 
       const config = createCofheConfig({
@@ -456,10 +454,11 @@ export default function App() {
         <div className="dapp-hero-grid">
           {/* LEFT COLUMN: HERO INTRO */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "40px" }}>
-            <h1 className="hero-title">
-              <span className="text-gradient-cyan">Sakasena</span><br />
+            {/* 🌟 MİNT BUTONU PARLAKLIĞINDA SAKASENA FINANCE SLOGANI */}
+            <h1 className="hero-title" style={{ color: "var(--color-accent)", textShadow: "0 0 20px rgba(0, 245, 255, 0.15)" }}>
+              Sakasena<br />
               Finance.<br />
-              Shield Your Assets.
+              <span style={{ color: "var(--text-primary)" }}>Shield Your Assets.</span>
             </h1>
             <p className="hero-desc">
               True on-chain privacy with FHERC20, powered by Fhenix CoFHE.
@@ -493,7 +492,7 @@ export default function App() {
                 </p>
               </div>
 
-              {/* 🌟 Sadece çizgilerden oluşan siber Decrypt/Encrypt göz butonu */}
+              {/* Sadece çizgilerden oluşan siber Decrypt/Encrypt göz butonu */}
               <button 
                 className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
                 onClick={togglePrivacy}
