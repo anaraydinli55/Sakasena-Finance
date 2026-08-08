@@ -30,6 +30,14 @@ const CONTRACT_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)"
 ];
 
+interface TxLog {
+  id: string;
+  type: "Mint" | "Transfer" | "Approve";
+  amount: string;
+  target: string;
+  hash: string;
+}
+
 export default function App() {
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -44,6 +52,9 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(false);
   const [txLogs, setTxLogs] = useState<TxLog[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
+
+  // Disconnect acilir menusu (Dropdown) durumu
+  const [showDisconnect, setShowDisconnect] = useState<boolean>(false);
 
   // Form Girdileri
   const [mintAmount, setMintAmount] = useState<string>("10");
@@ -67,7 +78,7 @@ export default function App() {
     }
   }, []);
 
-  // 🌟 OTM-RECONNECT: Ag degistigi an siber motoru yeni aga otomatik baglar!
+  // OTM-RECONNECT: Ag degistigi an siber motoru yeni aga otomatik baglar!
   useEffect(() => {
     if (account && chainId) {
       connectWallet();
@@ -86,6 +97,19 @@ export default function App() {
     }
   }
 
+  // Cüzdan Bağlantısını Kesme (Disconnect)
+  function handleDisconnect() {
+    setAccount(null);
+    setChainId(null);
+    setCofheClient(null);
+    setDecryptedBalance(null);
+    setBalanceHandle(null);
+    setIsPrivacyOpen(false);
+    setShowDisconnect(false);
+    setStatus("Cuzdan baglantisi kesildi.");
+  }
+
+  // Ağ Değiştirme
   async function handleNetworkSwitch(targetChainId: number) {
     if (!(window as any).ethereum) return;
     const hexChainId = "0x" + targetChainId.toString(16);
@@ -129,6 +153,7 @@ export default function App() {
     }
   }
 
+  // Cüzdan Bağlantısı (İlk bağlantıda zorunlu Sepolia Ethereum tespiti)
   async function connectWallet() {
     try {
       setLoading(true);
@@ -143,6 +168,25 @@ export default function App() {
       
       const network = await provider.getNetwork();
       const currentChainId = Number(network.chainId);
+
+      // 🌟 ZORUNLU SEPOLIA ETHEREUM KONTROLÜ (İlk bağlantı anı)
+      if (!chainId && currentChainId !== 11155111) {
+        setStatus("Hatali Ag! Otomatik olarak Ethereum Sepolia siber agina gecis yapiliyor...");
+        try {
+          const hexChainId = "0x" + Number(11155111).toString(16);
+          await (window as any).ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: hexChainId }],
+          });
+          return; // Gecis yapildiginda chainChanged eventi otomatik tetiklenecektir
+        } catch (switchError: any) {
+          setStatus("⚠️ Hatali Ag! Lutfen MetaMask cuzdaninizi Ethereum Sepolia agina gecirin.");
+          setChainId(currentChainId);
+          setAccount(accounts[0]);
+          return;
+        }
+      }
+
       setChainId(currentChainId);
       setAccount(accounts[0]);
 
@@ -166,6 +210,7 @@ export default function App() {
     }
   }
 
+  // Kriptolu Bakiye Çözme (Permit)
   async function togglePrivacy() {
     if (isPrivacyOpen) {
       setIsPrivacyOpen(false);
@@ -352,10 +397,12 @@ export default function App() {
 
   return (
     <div>
+      {/* TOP HEADER NAVIGATION */}
       <header className="cyber-header">
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ width: "10px", height: "10px", background: "var(--color-accent)", borderRadius: "50%", boxShadow: "0 0 10px var(--color-accent)" }}></div>
-          <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "1.5px", background: "linear-gradient(90deg, #fff, var(--text-secondary))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          <div style={{ width: "10px", height: "10px", background: "var(--color-primary)", borderRadius: "50%", boxShadow: "0 0 10px var(--color-primary)" }}></div>
+          {/* 🌟 FHENIX GRADYAN LOGO */}
+          <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "1.5px", background: "linear-gradient(90deg, var(--color-accent), var(--color-primary))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textShadow: "0 0 10px rgba(0, 245, 255, 0.2)" }}>
             SAKASENA FINANCE
           </span>
         </div>
@@ -379,15 +426,35 @@ export default function App() {
               Cuzdani Bagla
             </button>
           ) : (
-            <div className="cyber-badge" style={{ border: "1px solid var(--color-accent)", background: "rgba(0, 245, 255, 0.05)" }}>
-              {account.slice(0, 6)}...{account.slice(-4)}
+            /* 🌟 DROPDOWN DESTEKLI DISCONNECT BUTONU */
+            <div style={{ position: "relative" }}>
+              <button 
+                className="cyber-badge" 
+                style={{ border: "1px solid var(--color-accent)", background: "rgba(0, 245, 255, 0.05)", cursor: "pointer" }}
+                onClick={() => setShowDisconnect(!showDisconnect)}
+              >
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </button>
+              {showDisconnect && (
+                <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 10, display: "flex", flexDirection: "column", minWidth: "120px" }}>
+                  <button 
+                    className="sidebar-link" 
+                    style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--text-secondary)", textAlign: "left", width: "100%", cursor: "pointer" }}
+                    onClick={handleDisconnect}
+                  >
+                    ❌ Disconnect
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </header>
 
+      {/* DAPP LAYOUT */}
       <div className="dapp-layout">
         <div className="dapp-hero-grid">
+          {/* LEFT COLUMN: HERO INTRO */}
           <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "40px" }}>
             <h1 className="hero-title">
               <span className="text-gradient-cyan">Sakasena</span><br />
@@ -406,7 +473,9 @@ export default function App() {
             </div>
           </div>
 
+          {/* RIGHT COLUMN: INTERACTIVE WIDGET CARD */}
           <div className="cyber-card">
+            {/* Widget Top Bar */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
               <div>
                 <h3 style={{ fontSize: "20px", fontWeight: "700" }}>
@@ -424,13 +493,28 @@ export default function App() {
                 </p>
               </div>
 
+              {/* 🌟 Sadece çizgilerden oluşan siber Decrypt/Encrypt göz butonu */}
               <button 
                 className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
                 onClick={togglePrivacy}
                 disabled={loading}
                 title={isPrivacyOpen ? "Gizle" : "Bakiyeyi Sifreli Coz ve Goster"}
+                style={{ display: "flex", alignItems: "center", gap: "8px", width: "auto", padding: "8px 12px", borderRadius: "6px" }}
               >
-                {isPrivacyOpen ? "👁️" : "👁️‍🗨️"}
+                {isPrivacyOpen ? (
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                )}
+                <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  {isPrivacyOpen ? "Encrypt" : "Decrypt"}
+                </span>
               </button>
             </div>
 
