@@ -1,0 +1,7 @@
+{
+  "network": "arb-sepolia",
+  "contract": "ConfidentialERC20",
+  "address": "0x44a35f412433dB0fFB6112A584D0839B044778aF",
+  "deployer": "0x7441bcc19b2bE561da46FF9CCB3bb1AE54513513",
+  "deployedAt": "2026-08-08T14:04:44.012Z"
+}

@@ -1,0 +1,64 @@
+import { task } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { Encryptable } from "@cofhe/sdk";
+import { createCofheConfig, createCofheClient } from "@cofhe/sdk/node";
+import { Ethers6Adapter } from "@cofhe/sdk/adapters";
+import { chains } from "@cofhe/sdk/chains";
+
+// Yeni deploy edecegimiz kontrat adresini buraya yazacagiz (Adim 5'te otomatik güncellenecek)
+const TOKEN_ADDRESS = "0x0e0B526686Dd20A8CC60965EDf2Cd40680940Eb1";
+
+task("transfer-erc20", "Transfer encrypted tokens to another account")
+  .addParam("to", "Recipient address")
+  .addOptionalParam("amount", "Amount to transfer", "1")
+  .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+    const { ethers, network } = hre;
+
+    const [signer] = await ethers.getSigners();
+    const recipient = args.to;
+    const amount = BigInt(args.amount);
+
+    console.log(`Network: ${network.name}`);
+    console.log(`Sender: ${signer.address}`);
+    console.log(`Recipient: ${recipient}`);
+    console.log(`Amount: ${amount}`);
+
+    if (amount <= 0n) {
+      throw new Error("Amount must be greater than zero");
+    }
+
+    console.log("Creating CoFHE client...");
+    const { publicClient, walletClient } = await Ethers6Adapter(ethers.provider, signer);
+
+    const config = createCofheConfig({
+      supportedChains: [chains.sepolia],
+    });
+
+    const cofheClient = createCofheClient(config);
+    await cofheClient.connect(publicClient, walletClient);
+
+    console.log("Encrypting transfer amount...");
+    const [encryptedAmount] = await cofheClient
+      .encryptInputs([
+        Encryptable.uint64(amount),
+      ])
+      .execute();
+
+    console.log("Amount encrypted.");
+
+    const token = await ethers.getContractAt(
+      "ConfidentialERC20",
+      TOKEN_ADDRESS,
+      signer
+    );
+
+    console.log("Calling transfer()...");
+    const tx = await token.transfer(recipient, encryptedAmount);
+
+    console.log(`Transaction hash: ${tx.hash}`);
+
+    const receipt = await tx.wait();
+
+    console.log(`Transfer confirmed in block: ${receipt?.blockNumber}`);
+    console.log("Encrypted transfer transaction executed successfully.");
+  });

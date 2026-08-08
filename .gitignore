@@ -1,19 +1,42 @@
-node_modules
+﻿# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Hardhat build artifacts and cache
+artifacts/
+cache/
+typechain-types/
+coverage/
+coverage.json
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+
+# Environment variables and private keys (Siber guvenlik acisindan kritik!)
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+.secret
+mnemonic.txt
 
-# Hardhat files
-/cache
-/artifacts
+# OS and system files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# TypeChain files
-/typechain
-/typechain-types
-
-# solidity-coverage files
-/coverage
-/coverage.json
-
-# Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
-deployments/arb-sepolia.json
-deployments/eth-sepolia.json
+# IDE configs
+.idea/
+.vscode/
+*.suo
+*.ntvsca
+*.njsproj
+*.sln
+*.swp
