@@ -238,6 +238,16 @@ export default function App() {
     }
   }
 
+  function togglePrivacy() {
+    setIsPrivacyOpen(prev => {
+      const next = !prev;
+      if (next) {
+        refreshBalances();
+      }
+      return next;
+    });
+  }
+
   function handlePercentClick(percent: number) {
     const totalSource = activeTab === "mint" ? publicBalance : decryptedBalance;
     if (!totalSource) return;
