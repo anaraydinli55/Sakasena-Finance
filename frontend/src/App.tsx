@@ -6,7 +6,7 @@ import { Ethers6Adapter } from "@cofhe/sdk/adapters";
 
 import "./index.css";
 
-// 🌟 SIBER ZINCIR AYARLARINI HARICI IMPORT OLMADAN DOĞRUDAN TANIMLIYORUZ (Sifir Hata Garantisi!)
+// Siber zincir ayarlarini sarmalin icinde dogrudan tanimliyoruz (Modul uyuşmazlığını engeller)
 const sepoliaChain = {
   id: 11155111,
   name: "Sepolia",
@@ -429,7 +429,7 @@ export default function App() {
       setStatus("STEP 2: Preparing transaction package with signed ZK-Proof...");
 
       setActiveStep(3);
-      setStatus("STEP 3: Submitting transaction to the blockchain. Wallet approval required... ");
+      setStatus("STEP 3: Submitting transaction to the blockchain. Wallet approval required...");
       
       const provider = new BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
@@ -598,234 +598,307 @@ export default function App() {
   }
 
   return (
-    <div className="dapp-container">
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        <h1 className="hero-title">
-          <span className="text-gradient-cyan">Sakasena</span><br />
-          Finance.<br />
-          Shield Your Assets.
-        </h1>
-        <p className="hero-desc">
-          True on-chain privacy with FHERC20, powered by Fhenix CoFHE.
-          Encrypted balances, private transfers, and secure withdrawals in one interface.
-        </p>
-
-        <div className="badge-row">
-          <div className="cyber-badge">🔒 Encrypted Balances</div>
-          <div className="cyber-badge">🎯 Private Transfers</div>
-          <div className="cyber-badge">⚙️ Fhenix CoFHE</div>
+    <div>
+      {/* TOP HEADER NAVIGATION */}
+      <header className="cyber-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "10px", height: "10px", background: "var(--color-primary)", borderRadius: "50%", boxShadow: "0 0 10px var(--color-primary)" }}></div>
+          <span style={{ fontSize: "16px", fontWeight: "700", letterSpacing: "1.5px", background: "linear-gradient(90deg, var(--color-accent), var(--color-primary))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textShadow: "0 0 10px rgba(0, 245, 255, 0.2)" }}>
+            SAKASENA FINANCE
+          </span>
         </div>
-      </div>
 
-      <div className="cyber-card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
-          <div>
-            <h3 style={{ fontSize: "20px", fontWeight: "700" }}>
-              {activeTab === "mint" && `Mint ${activeTokenSymbol}`}
-              {activeTab === "transfer" && "Private Transfer"}
-              {activeTab === "approve" && "DeFi Approval"}
-              {activeTab === "unshield" && `Unshield ${activeTokenSymbol}`}
-            </h3>
-            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-              {activeTab === "mint" && `Mint encrypted Sakasena ${activeTokenSymbol} tokens.`}
-              {activeTab === "transfer" && `Transfer encrypted ${activeTokenSymbol} tokens privately.`}
-              {activeTab === "approve" && `Set confidential allowances for other spenders.`}
-              {activeTab === "unshield" && `Unshield (burn) ${activeTokenSymbol} back to public.`}
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          {account && (
+            <select 
+              className="network-select" 
+              value={chainId || 11155111} 
+              onChange={(e) => handleNetworkSwitch(Number(e.target.value))}
+              disabled={loading}
+            >
+              <option value={11155111}>Ethereum Sepolia</option>
+              <option value={421614}>Arbitrum Sepolia</option>
+              <option value={84532}>Base Sepolia</option>
+            </select>
+          )}
+
+          {!account ? (
+            <button className="btn-primary" style={{ width: "auto", padding: "10px 20px" }} onClick={connectWallet} disabled={loading}>
+              Connect Wallet
+            </button>
+          ) : (
+            <div style={{ position: "relative" }}>
+              <button 
+                className="cyber-badge" 
+                style={{ border: "1px solid var(--color-accent)", background: "rgba(0, 245, 255, 0.05)", cursor: "pointer" }}
+                onClick={() => setShowDisconnect(!showDisconnect)}
+              >
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </button>
+              {showDisconnect && (
+                <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 10, display: "flex", flexDirection: "column", minWidth: "120px" }}>
+                  <button 
+                    className="sidebar-link" 
+                    style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--text-secondary)", textAlign: "left", width: "100%", cursor: "pointer" }}
+                    onClick={handleDisconnect}
+                  >
+                    ❌ Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* DAPP LAYOUT */}
+      <div className="dapp-layout">
+        {showAddCoin && (
+          <div className="glass-panel" style={{ padding: "20px", marginBottom: "32px", display: "flex", flexDirection: "column", gap: "12px", maxWidth: "480px" }}>
+            <h4 style={{ color: "var(--color-accent)" }}>➕ Add Custom Confidential Coin</h4>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <input type="text" className="cyber-input" placeholder="Contract Address (0x...)" value={newCoinAddress} onChange={(e) => setNewAddCoinAddress(e.target.value)} />
+            </div>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button className="btn-primary" style={{ padding: "8px" }} onClick={handleAddCustomCoin}>Add Coin</button>
+              <button className="btn-secondary" style={{ padding: "8px" }} onClick={() => setShowAddCoin(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        <div className="dapp-hero-grid">
+          {/* LEFT COLUMN: HERO INTRO */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "40px" }}>
+            <h1 className="hero-title" style={{ color: "var(--color-accent)", textShadow: "0 0 20px rgba(0, 245, 255, 0.25)" }}>
+              Sakasena<br />
+              Finance.<br />
+              <span style={{ color: "var(--text-primary)" }}>Shield Your Assets.</span>
+            </h1>
+            <p className="hero-desc">
+              True on-chain privacy with FHERC20, powered by Fhenix CoFHE.
+              Encrypted balances, private transfers, and secure withdrawals in one interface.
             </p>
-            <p style={{ fontSize: "11px", color: "var(--color-primary)", fontWeight: "600", marginTop: "8px", letterSpacing: "1px" }}>
-              BALANCE: {isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}
-            </p>
+
+            <div className="badge-row">
+              <div className="cyber-badge">🔒 Encrypted Balances</div>
+              <div className="cyber-badge">🎯 Private Transfers</div>
+              <div className="cyber-badge">⚙️ Fhenix CoFHE</div>
+            </div>
           </div>
 
-          <button 
-            className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
-            onClick={togglePrivacy}
-            disabled={loading}
-            title={isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
-            style={{ display: "flex", alignItems: "center", gap: "8px", width: "auto", padding: "8px 12px", borderRadius: "6px" }}
-          >
-            {isPrivacyOpen ? (
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            ) : (
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            )}
-            <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase" }}>
-              {isPrivacyOpen ? "Encrypt" : "Decrypt"}
-            </span>
-          </button>
-        </div>
-
-        <div className="tab-container">
-          <button className={`tab-btn ${activeTab === "mint" ? "active" : ""}`} onClick={() => setActiveTab("mint")}>
-            Shield
-          </button>
-          <button className={`tab-btn ${activeTab === "unshield" ? "active" : ""}`} onClick={() => setActiveTab("unshield")}>
-            Unshield
-          </button>
-          <button className={`tab-btn ${activeTab === "transfer" ? "active" : ""}`} onClick={() => setActiveTab("transfer")}>
-            Transfer
-          </button>
-          <button className={`tab-btn ${activeTab === "approve" ? "active" : ""}`} onClick={() => setActiveTab("approve")}>
-            Approve
-          </button>
-        </div>
-
-        {/* ACTIVE TAB BODY */}
-        {/* 1. MINT SECTION */}
-        {activeTab === "mint" && (
-          <div>
-            <div className="deposit-box">
-              <div className="deposit-header">
-                <span>You Deposit</span>
-                <span>{activeTokenSymbol} Token</span>
+          {/* RIGHT COLUMN: INTERACTIVE WIDGET CARD */}
+          <div className="cyber-card">
+            {/* Widget Top Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+              <div>
+                <h3 style={{ fontSize: "20px", fontWeight: "700" }}>
+                  {activeTab === "mint" && `Mint ${activeTokenSymbol}`}
+                  {activeTab === "transfer" && "Private Transfer"}
+                  {activeTab === "approve" && "DeFi Approval"}
+                  {activeTab === "unshield" && `Unshield ${activeTokenSymbol}`}
+                </h3>
+                <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                  {activeTab === "mint" && `Mint encrypted Sakasena ${activeTokenSymbol} tokens.`}
+                  {activeTab === "transfer" && `Transfer encrypted ${activeTokenSymbol} tokens privately.`}
+                  {activeTab === "approve" && `Set confidential allowances for other spenders.`}
+                  {activeTab === "unshield" && `Unshield (burn) ${activeTokenSymbol} back to public.`}
+                </p>
+                <p style={{ fontSize: "11px", color: "var(--color-primary)", fontWeight: "600", marginTop: "8px", letterSpacing: "1px" }}>
+                  BALANCE: {isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}
+                </p>
               </div>
-              <div className="deposit-input-row">
-                <input 
-                  type="number" 
-                  className="deposit-num-input" 
-                  value={mintAmount} 
-                  onChange={(e) => setMintAmount(e.target.value)} 
-                  disabled={loading || !account} 
-                />
-                
-                {/* YENI COIN SEÇİCİ DROPDOWN (Yüksek okunabilirlikli koin isimleri!) */}
-                <div style={{ position: "relative" }}>
-                  <button 
-                    className="token-badge" 
-                    onClick={() => setShowTokenSelect(!showTokenSelect)}
-                    style={{ cursor: "pointer", border: "1px solid var(--color-border)", background: "rgba(255,255,255,0.04)" }}
-                  >
-                    <div className="token-dot"></div>
-                    {activeTokenSymbol}
-                  </button>
-                  {showTokenSelect && (
-                    <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                      {tokens.map(t => (
-                        <button 
-                          key={t.symbol} 
-                          className="sidebar-link" 
-                          style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "#FFFFFF", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
-                          onClick={() => {
-                            setActiveTokenSymbol(t.symbol);
-                            setShowTokenSelect(false);
-                            setIsPrivacyOpen(false);
-                            setDecryptedBalance(null);
-                            setBalanceHandle(null);
-                          }}
-                        >
-                          {t.symbol}
-                        </button>
-                      ))}
-                      <button 
-                        className="sidebar-link" 
-                        style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
-                        onClick={() => {
-                          setShowAddCoin(true);
-                          setShowTokenSelect(false);
-                        }}
-                      >
-                        ➕ Add Custom
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                <span>Balance: {publicBalance ? `${publicBalance} ${activeTokenSymbol === "sakETH" ? "ETH" : activeTokenSymbol.replace("sak", "")}` : "••••"}</span>
-                {account && (
-                  <span style={{ color: "var(--color-accent)", cursor: "pointer" }} onClick={() => setMintAmount("100")}>MAX</span>
+
+              {/* Sadece çizgilerden oluşan siber Decrypt/Encrypt göz butonu */}
+              <button 
+                className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
+                onClick={togglePrivacy}
+                disabled={loading}
+                title={isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
+                style={{ display: "flex", alignItems: "center", gap: "8px", width: "auto", padding: "8px 12px", borderRadius: "6px" }}
+              >
+                {isPrivacyOpen ? (
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
                 )}
-              </div>
+                <span style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  {isPrivacyOpen ? "Encrypt" : "Decrypt"}
+                </span>
+              </button>
             </div>
-          </div>
-        )}
 
-        {/* 2. TRANSFER SECTION */}
-        {activeTab === "transfer" && (
-          <div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-              <input 
-                type="text" 
-                className="cyber-input" 
-                placeholder="Recipient Address (0x...)" 
-                value={transferTo} 
-                onChange={(e) => setTransferTo(e.target.value)} 
-                disabled={loading || !account} 
-              />
+            {/* Tab Selection */}
+            <div className="tab-container">
+              <button className={`tab-btn ${activeTab === "mint" ? "active" : ""}`} onClick={() => setActiveTab("mint")}>
+                Shield
+              </button>
+              <button className={`tab-btn ${activeTab === "unshield" ? "active" : ""}`} onClick={() => setActiveTab("unshield")}>
+                Unshield
+              </button>
+              <button className={`tab-btn ${activeTab === "transfer" ? "active" : ""}`} onClick={() => setActiveTab("transfer")}>
+                Transfer
+              </button>
+              <button className={`tab-btn ${activeTab === "approve" ? "active" : ""}`} onClick={() => setActiveTab("approve")}>
+                Approve
+              </button>
             </div>
-            <div className="deposit-box">
-              <div className="deposit-header">
-                <span>You Send</span>
-                <span>{activeTokenSymbol} Token</span>
-              </div>
-              <div className="deposit-input-row">
-                <input 
-                  type="number" 
-                  className="deposit-num-input" 
-                  value={transferAmount} 
-                  onChange={(e) => setTransferAmount(e.target.value)} 
-                  disabled={loading || !account} 
-                />
-                
-                {/* YENI COIN SEÇİCİ DROPDOWN */}
-                <div style={{ position: "relative" }}>
-                  <button 
-                    className="token-badge" 
-                    onClick={() => setShowTokenSelect(!showTokenSelect)}
-                    style={{ cursor: "pointer", border: "1px solid var(--color-border)", background: "rgba(255,255,255,0.04)" }}
-                  >
-                    <div className="token-dot"></div>
-                    {activeTokenSymbol}
-                  </button>
-                  {showTokenSelect && (
-                    <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                      {tokens.map(t => (
-                        <button 
-                          key={t.symbol} 
-                          className="sidebar-link" 
-                          style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "#FFFFFF", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
-                          onClick={() => {
-                            setActiveTokenSymbol(t.symbol);
-                            setShowTokenSelect(false);
-                            setIsPrivacyOpen(false);
-                            setDecryptedBalance(null);
-                            setBalanceHandle(null);
-                          }}
-                        >
-                          {t.symbol}
-                        </button>
-                      ))}
+
+            {/* ACTIVE TAB BODY */}
+            {/* 1. MINT SECTION */}
+            {activeTab === "mint" && (
+              <div>
+                <div className="deposit-box">
+                  <div className="deposit-header">
+                    <span>You Deposit</span>
+                    <span>{activeTokenSymbol} Token</span>
+                  </div>
+                  <div className="deposit-input-row">
+                    <input 
+                      type="number" 
+                      className="deposit-num-input" 
+                      value={mintAmount} 
+                      onChange={(e) => setMintAmount(e.target.value)} 
+                      disabled={loading || !account} 
+                    />
+                    
+                    {/* YENI COIN SEÇİCİ DROPDOWN (Yüksek okunabilirlikli koin isimleri!) */}
+                    <div style={{ position: "relative" }}>
                       <button 
-                        className="sidebar-link" 
-                        style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
-                        onClick={() => {
-                          setShowAddCoin(true);
-                          setShowTokenSelect(false);
-                        }}
+                        className="token-badge" 
+                        onClick={() => setShowTokenSelect(!showTokenSelect)}
+                        style={{ cursor: "pointer", border: "1px solid var(--color-border)", background: "rgba(255,255,255,0.04)" }}
                       >
-                        ➕ Add Custom
+                        <div className="token-dot"></div>
+                        {activeTokenSymbol}
                       </button>
+                      {showTokenSelect && (
+                        <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
+                          {tokens.map(t => (
+                            <button 
+                              key={t.symbol} 
+                              className="sidebar-link" 
+                              style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "#FFFFFF", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
+                              onClick={() => {
+                                setActiveTokenSymbol(t.symbol);
+                                setShowTokenSelect(false);
+                                setIsPrivacyOpen(false);
+                                setDecryptedBalance(null);
+                                setBalanceHandle(null);
+                              }}
+                            >
+                              {t.symbol}
+                            </button>
+                          ))}
+                          <button 
+                            className="sidebar-link" 
+                            style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
+                            onClick={() => {
+                              setShowAddCoin(true);
+                              setShowTokenSelect(false);
+                            }}
+                          >
+                            ➕ Add Custom
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
+                    <span>Balance: {publicBalance ? `${publicBalance} ${activeTokenSymbol === "sakETH" ? "ETH" : activeTokenSymbol.replace("sak", "")}` : "••••"}</span>
+                    {account && (
+                      <span style={{ color: "var(--color-accent)", cursor: "pointer" }} onClick={() => setMintAmount("100")}>MAX</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
-              </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* 3. APPROVE SECTION */}
-        {activeTab === "approve" && (
-          <div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+            {/* 2. TRANSFER SECTION */}
+            {activeTab === "transfer" && (
+              <div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                  <input 
+                    type="text" 
+                    className="cyber-input" 
+                    placeholder="Recipient Address (0x...)" 
+                    value={transferTo} 
+                    onChange={(e) => setTransferTo(e.target.value)} 
+                    disabled={loading || !account} 
+                  />
+                </div>
+                <div className="deposit-box">
+                  <div className="deposit-header">
+                    <span>You Send</span>
+                    <span>{activeTokenSymbol} Token</span>
+                  </div>
+                  <div className="deposit-input-row">
+                    <input 
+                      type="number" 
+                      className="deposit-num-input" 
+                      value={transferAmount} 
+                      onChange={(e) => setTransferAmount(e.target.value)} 
+                      disabled={loading || !account} 
+                    />
+                    
+                    {/* YENI COIN SEÇİCİ DROPDOWN */}
+                    <div style={{ position: "relative" }}>
+                      <button 
+                        className="token-badge" 
+                        onClick={() => setShowTokenSelect(!showTokenSelect)}
+                        style={{ cursor: "pointer", border: "1px solid var(--color-border)", background: "rgba(255,255,255,0.04)" }}
+                      >
+                        <div className="token-dot"></div>
+                        {activeTokenSymbol}
+                      </button>
+                      {showTokenSelect && (
+                        <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
+                          {tokens.map(t => (
+                            <button 
+                              key={t.symbol} 
+                              className="sidebar-link" 
+                              style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "#FFFFFF", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
+                              onClick={() => {
+                                setActiveTokenSymbol(t.symbol);
+                                setShowTokenSelect(false);
+                                setIsPrivacyOpen(false);
+                                setDecryptedBalance(null);
+                                setBalanceHandle(null);
+                              }}
+                            >
+                              {t.symbol}
+                            </button>
+                          ))}
+                          <button 
+                            className="sidebar-link" 
+                            style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
+                            onClick={() => {
+                              setShowAddCoin(true);
+                              setShowTokenSelect(false);
+                            }}
+                          >
+                            ➕ Add Custom
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
+                    <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. APPROVE SECTION */}
+            {activeTab === "approve" && (
+              <div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
                   <input 
                     type="text" 
                     className="cyber-input" 
