@@ -1,7 +1,7 @@
 {
   "network": "eth-sepolia",
   "contract": "ConfidentialERC20",
-  "address": "0x0e0B526686Dd20A8CC60965EDf2Cd40680940Eb1",
+  "address": "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
   "deployer": "0x7441bcc19b2bE561da46FF9CCB3bb1AE54513513",
-  "deployedAt": "2026-08-08T13:55:38.286Z"
+  "deployedAt": "2026-08-09T15:43:02.252Z"
 }

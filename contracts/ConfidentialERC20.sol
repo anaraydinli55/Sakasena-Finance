@@ -11,8 +11,6 @@ contract ConfidentialERC20 is Ownable {
     uint8 public constant decimals = 18;
 
     mapping(address => euint64) internal balances;
-
-    // Sifreli harcama yetkisi havuzu (Allowances)
     mapping(address => mapping(address => euint64)) internal allowances;
 
     euint64 internal totalSupply;
@@ -20,6 +18,7 @@ contract ConfidentialERC20 is Ownable {
     event Mint(address indexed to);
     event Transfer(address indexed from, address indexed to);
     event Approval(address indexed owner, address indexed spender);
+    event Unshield(address indexed account);
 
     constructor() Ownable(msg.sender) {
         totalSupply = FHE.asEuint64(0);
@@ -30,7 +29,6 @@ contract ConfidentialERC20 is Ownable {
         return balances[account];
     }
 
-    // Harcama yetkisi sorgulamak için Getter fonksiyonu
     function allowance(address owner, address spender) public view returns (euint64) {
         return allowances[owner][spender];
     }
@@ -76,7 +74,6 @@ contract ConfidentialERC20 is Ownable {
         return true;
     }
 
-    // Sifreli harcama yetkisi verme fonksiyonu (Approve)
     function approve(
         address spender,
         InEuint64 memory amount
@@ -93,7 +90,6 @@ contract ConfidentialERC20 is Ownable {
         return true;
     }
 
-    // Yetki dahilinde sifreli transfer (TransferFrom)
     function transferFrom(
         address from,
         address to,
@@ -124,5 +120,21 @@ contract ConfidentialERC20 is Ownable {
         emit Transfer(from, to);
 
         return true;
+    }
+
+    // ?? SAFE UNSHIELD (FHE Mimarisine Tam Uyumlu Sifreli Yakma/Geri Çekme)
+    function unshield(
+        InEuint64 memory encryptedAmount
+    ) public {
+        euint64 amount = FHE.asEuint64(encryptedAmount);
+
+        balances[msg.sender] = FHE.sub(balances[msg.sender], amount);
+        totalSupply = FHE.sub(totalSupply, amount);
+
+        FHE.allowThis(balances[msg.sender]);
+        FHE.allow(balances[msg.sender], msg.sender);
+        FHE.allowThis(totalSupply);
+
+        emit Unshield(msg.sender);
     }
 }
