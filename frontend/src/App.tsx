@@ -1,16 +1,46 @@
 ﻿import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, ethers } from "ethers";
+import { BrowserProvider, Contract, formatEther, formatUnits } from "ethers";
 import { FheTypes, Encryptable } from "@cofhe/sdk";
 import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
 import { Ethers6Adapter } from "@cofhe/sdk/adapters";
-import { sepolia, arbSepolia, baseSepolia } from "@cofhe/sdk/chains";
 
 import "./index.css";
 
+// Siber zincir ayarlarini sarmalin icinde dogrudan tanimliyoruz (Modul uyuşmazlığını engeller)
+const sepoliaChain = {
+  id: 11155111,
+  name: "Sepolia",
+  network: "sepolia",
+  coFheUrl: "https://testnet-cofhe.fhenix.zone",
+  verifierUrl: "https://testnet-cofhe-vrf.fhenix.zone",
+  thresholdNetworkUrl: "https://testnet-cofhe-tn.fhenix.zone",
+  environment: "TESTNET" as const
+};
+
+const arbSepoliaChain = {
+  id: 421614,
+  name: "Arbitrum Sepolia",
+  network: "arb-sepolia",
+  coFheUrl: "https://testnet-cofhe.fhenix.zone",
+  verifierUrl: "https://testnet-cofhe-vrf.fhenix.zone",
+  thresholdNetworkUrl: "https://testnet-cofhe-tn.fhenix.zone",
+  environment: "TESTNET" as const
+};
+
+const baseSepoliaChain = {
+  id: 84532,
+  name: "Base Sepolia",
+  network: "base-sepolia",
+  coFheUrl: "https://testnet-cofhe.fhenix.zone",
+  verifierUrl: "https://testnet-cofhe-vrf.fhenix.zone",
+  thresholdNetworkUrl: "https://testnet-cofhe-tn.fhenix.zone",
+  environment: "TESTNET" as const
+};
+
 const CONTRACT_ADDRESSES: { [chainId: number]: string } = {
-  11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
-  421614: "0x12C7A341Fa101a5f9Ec47f583ad9ef39868c7Cc3",  
-  84532: "0x8A016D7b82cB60C6E6DFF0B19ea062d80F7a6F8b"   
+  11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+  421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",  
+  84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"   
 };
 
 const NETWORK_NAMES: { [chainId: number]: string } = {
@@ -64,7 +94,7 @@ export default function App() {
   const [showDisconnect, setShowDisconnect] = useState<boolean>(false);
   const [showTokenSelect, setShowTokenSelect] = useState<boolean>(false);
 
-  // 🌟 DINAMIK SIBER COIN LISTESI (sakETH, sakUSDC, ETH, USDC, USDT)
+  // DINAMIK SIBER COIN LISTESI
   const [tokens, setTokens] = useState<TokenConfig[]>([
     {
       symbol: "sakETH",
@@ -74,9 +104,9 @@ export default function App() {
         84532: "0x0000000000000000000000000000000000000000"
       },
       privateAddresses: {
-        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
-        421614: "0x12C7A341Fa101a5f9Ec47f583ad9ef39868c7Cc3",
-        84532: "0x8A016D7b82cB60C6E6DFF0B19ea062d80F7a6F8b"
+        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
+        84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
       decimals: 18
     },
@@ -88,9 +118,9 @@ export default function App() {
         84532: "0x034934E2777df4c7F5b2df50D8A5890736173b9E"    
       },
       privateAddresses: {
-        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
-        421614: "0x12C7A341Fa101a5f9Ec47f583ad9ef39868c7Cc3",
-        84532: "0x8A016D7b82cB60C6E6DFF0B19ea062d80F7a6F8b"
+        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
+        84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
       decimals: 6
     },
@@ -102,9 +132,9 @@ export default function App() {
         84532: "0x2222222222222222222222222222222222222222"
       },
       privateAddresses: {
-        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
-        421614: "0x12C7A341Fa101a5f9Ec47f583ad9ef39868c7Cc3",
-        84532: "0x8A016D7b82cB60C6E6DFF0B19ea062d80F7a6F8b"
+        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
+        84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
       decimals: 6
     }
@@ -112,7 +142,7 @@ export default function App() {
   const [activeTokenSymbol, setActiveTokenSymbol] = useState<string>("sakETH");
 
   const [showAddCoin, setShowAddCoin] = useState<boolean>(false);
-  const [newCoinAddress, setNewAddCoinAddress] = useState<string>("");
+  const [newCoinAddress, setNewAddCoinAddress] = useState<string>("0x0e0B526686Dd20A8CC60965EDf2Cd40680940Eb1");
 
   // Form Girdileri
   const [mintAmount, setMintAmount] = useState<string>("10");
@@ -177,14 +207,14 @@ export default function App() {
       const publicAddress = activeToken.publicAddresses[chainId];
       if (activeToken.symbol === "sakETH" || activeToken.symbol === "ETH") {
         const ethBalanceRaw = await activeProvider.getBalance(activeAccount);
-        setPublicBalance(parseFloat(ethers.formatEther(ethBalanceRaw)).toFixed(4));
-        setPublicEthBalance(parseFloat(ethers.formatEther(ethBalanceRaw)).toFixed(4));
+        setPublicBalance(parseFloat(formatEther(ethBalanceRaw)).toFixed(4));
+        setPublicEthBalance(parseFloat(formatEther(ethBalanceRaw)).toFixed(4));
       } else {
         try {
           const publicContract = new Contract(publicAddress, ["function balanceOf(address) external view returns (uint256)"], activeProvider);
           const rawBalance = await publicContract.balanceOf(activeAccount);
           const decs = activeToken.decimals;
-          setPublicBalance(parseFloat(ethers.formatUnits(rawBalance, decs)).toFixed(4));
+          setPublicBalance(parseFloat(formatUnits(rawBalance, decs)).toFixed(4));
         } catch (e) {
           console.warn("Public balance error", e);
           setPublicBalance("0.0000");
@@ -344,7 +374,7 @@ export default function App() {
       const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
 
       const config = createCofheConfig({
-        supportedChains: [sepolia, arbSepolia, baseSepolia],
+        supportedChains: [sepoliaChain, arbSepoliaChain, baseSepoliaChain],
       });
 
       const client = createCofheClient(config);
@@ -703,7 +733,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Tab Selection (Yeniden siralandi: SHIELD, UNSHIELD, TRANSFER, APPROVE) */}
             <div className="tab-container">
               <button className={`tab-btn ${activeTab === "mint" ? "active" : ""}`} onClick={() => setActiveTab("mint")}>
                 Shield

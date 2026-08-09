@@ -25,7 +25,6 @@ body {
   font-family: var(--font-cyber);
   overflow-x: hidden;
   min-height: 100vh;
-  /* Spectre Ambient Glow + Grid Background */
   background-image: 
     radial-gradient(circle at 10% 15%, rgba(0, 245, 255, 0.07) 0%, transparent 40%),
     radial-gradient(circle at 90% 15%, rgba(156, 39, 176, 0.04) 0%, transparent 45%),
@@ -36,7 +35,6 @@ body {
   background-attachment: fixed;
 }
 
-/* Header Navbar */
 .cyber-header {
   display: flex;
   justify-content: space-between;
@@ -50,7 +48,6 @@ body {
   z-index: 100;
 }
 
-/* Dropdown Network Selector */
 .network-select {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--color-border);
@@ -69,7 +66,6 @@ body {
   border-color: var(--color-accent);
 }
 
-/* Layout Grid */
 .dapp-layout {
   max-width: 1200px;
   margin: 0 auto;
@@ -91,7 +87,6 @@ body {
   }
 }
 
-/* Left Hero */
 .hero-title {
   font-size: 56px;
   font-weight: 700;
@@ -132,7 +127,6 @@ body {
   text-transform: uppercase;
 }
 
-/* Cyber card */
 .cyber-card {
   background: var(--bg-card);
   border: 1px solid var(--color-border);
@@ -154,7 +148,6 @@ body {
   background: linear-gradient(90deg, var(--color-accent), var(--color-primary));
 }
 
-/* Tabs */
 .tab-container {
   display: flex;
   background: rgba(0, 0, 0, 0.4);
@@ -185,7 +178,6 @@ body {
   box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
 }
 
-/* Deposit input container */
 .deposit-box {
   background: var(--bg-input);
   border: 1px solid var(--color-border);
@@ -232,7 +224,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #FFFFFF; /* GÖZE BATAN PARLAK BEYAZ KOIN METNİ */
+  color: #FFFFFF; /* HIGH CONTRAST WHITE */
 }
 
 .token-dot {
@@ -243,7 +235,6 @@ body {
   box-shadow: 0 0 8px var(--color-accent);
 }
 
-/* Slider Percentage Panel */
 .slider-container {
   margin-bottom: 24px;
 }
@@ -281,7 +272,6 @@ body {
   color: var(--color-accent);
 }
 
-/* Dynamic Steps Component inside Card */
 .steps-container {
   display: flex;
   flex-direction: column;
@@ -330,7 +320,6 @@ body {
   box-shadow: 0 0 10px rgba(0, 255, 102, 0.25);
 }
 
-/* Privacy Toggle */
 .privacy-toggle {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--color-border);
@@ -357,7 +346,6 @@ body {
   box-shadow: 0 0 10px rgba(0, 245, 255, 0.2);
 }
 
-/* Inputs */
 .cyber-input {
   width: 100%;
   background: rgba(0, 0, 0, 0.3);
@@ -374,7 +362,6 @@ body {
   border-color: var(--color-primary);
 }
 
-/* Action button */
 .btn-primary {
   width: 100%;
   background: var(--color-primary);
@@ -403,7 +390,6 @@ body {
   cursor: not-allowed;
 }
 
-/* Bottom Activity Section */
 .bottom-panel {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -453,7 +439,6 @@ body {
   gap: 12px;
 }
 
-/* Stats Widgets Row */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
