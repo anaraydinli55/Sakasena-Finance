@@ -1,9 +1,9 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-main: #05070B;
-  --bg-card: #0C0F14;
-  --bg-input: #07090C;
+  --bg-main: #040608;
+  --bg-card: #0A0D12;
+  --bg-input: #05070A;
   --color-primary: #00FF66; /* Fhenix Acid Green */
   --color-accent: #00F5FF;  /* Electric Cyan */
   --color-border: rgba(255, 255, 255, 0.05);
@@ -232,6 +232,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #FFFFFF; /* GÖZE BATAN PARLAK BEYAZ KOIN METNİ */
 }
 
 .token-dot {
