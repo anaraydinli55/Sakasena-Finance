@@ -368,7 +368,16 @@ export default function App() {
       setChainId(currentChainId);
       setAccount(accounts[0]);
 
-      setStatus("CoFHE multi-chain siber cryptographic engine initializing...");
+      if (!NETWORK_NAMES[currentChainId]) {
+        setCofheClient(null);
+        setIsPrivacyOpen(false);
+        setDecryptedBalance(null);
+        setBalanceHandle(null);
+        setStatus(`Unsupported network (chain ID ${currentChainId}). Switch to Ethereum Sepolia, Arbitrum Sepolia, or Base Sepolia.`);
+        return;
+      }
+
+      setStatus("CoFHE multi-chain cryptographic engine initializing...");
       const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
 
       const config = createCofheConfig({
