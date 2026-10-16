@@ -418,6 +418,10 @@ export default function App() {
   }
 
   async function handleTransfer() {
+    if (!SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]) {
+      setStatus("Private transfer is disabled until a hardened contract is deployed and verified on a supported network.");
+      return;
+    }
     if (!account || !cofheClient || !transferTo || !currentContractAddress) return;
     try {
       setLoading(true);
@@ -464,6 +468,10 @@ export default function App() {
   }
 
   async function handleApprove() {
+    if (!SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]) {
+      setStatus("Confidential approvals are disabled until a hardened contract is deployed and verified on a supported network.");
+      return;
+    }
     if (!account || !cofheClient || !approveSpender || !currentContractAddress) return;
     try {
       setLoading(true);
