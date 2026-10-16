@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, formatEther, formatUnits } from "ethers";
+import { BrowserProvider, Contract, formatEther, formatUnits, parseUnits } from "ethers";
 import { FheTypes, Encryptable } from "@cofhe/sdk";
 import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
 import { Ethers6Adapter } from "@cofhe/sdk/adapters";
@@ -38,7 +38,7 @@ const baseSepoliaChain = {
 };
 
 const CONTRACT_ADDRESSES: { [chainId: number]: string } = {
-  11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+  11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
   421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",  
   84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"   
 };
@@ -58,6 +58,20 @@ const CONTRACT_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)",
   "function unshield((uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) amount) external"
 ];
+
+function parseTokenAmount(value: string, decimals: number): bigint {
+  const trimmed = value.trim();
+  if (!trimmed || !/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error("Enter a valid positive token amount.");
+  }
+  const amount = parseUnits(trimmed, decimals);
+  if (amount <= 0n) throw new Error("Amount must be greater than zero.");
+  const maxUint64 = (1n << 64n) - 1n;
+  if (amount > maxUint64) {
+    throw new Error("Amount exceeds the uint64 limit for this token.");
+  }
+  return amount;
+}
 
 interface TokenConfig {
   symbol: string;
@@ -104,7 +118,7 @@ export default function App() {
         84532: "0x0000000000000000000000000000000000000000"
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -118,7 +132,7 @@ export default function App() {
         84532: "0x034934E2777df4c7F5b2df50D8A5890736173b9E"    
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -132,7 +146,7 @@ export default function App() {
         84532: "0x2222222222222222222222222222222222222222"
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -198,7 +212,7 @@ export default function App() {
   }, [mintAmount, transferAmount, approveAmount, unshieldAmount, activeTab, publicBalance, decryptedBalance]);
 
   // Bakiye Tazeleyici
-  async function refreshBalances(prov?: any, acc?: string) {
+  async function refreshBalances(prov?: any, acc?: string, forcePrivacy = false) {
     const activeProvider = prov || new BrowserProvider((window as any).ethereum);
     const activeAccount = acc || account;
     if (!activeAccount || !chainId || !activeToken) return;
@@ -222,7 +236,7 @@ export default function App() {
       }
 
       const privateAddress = activeToken.privateAddresses[chainId];
-      if (isPrivacyOpen && privateAddress && cofheClient) {
+      if ((isPrivacyOpen || forcePrivacy) && privateAddress && cofheClient) {
         const signer = await activeProvider.getSigner();
         const tokenContract = new Contract(privateAddress, CONTRACT_ABI, signer);
         const ctHandle = await tokenContract.balanceOf(activeAccount);
@@ -231,7 +245,7 @@ export default function App() {
         const balance = await cofheClient
           .decryptForView(ctHandle, FheTypes.Uint64)
           .execute();
-        setDecryptedBalance(balance.toString());
+        setDecryptedBalance(parseFloat(formatUnits(BigInt(balance.toString()), activeToken.decimals)).toFixed(4));
       }
     } catch (err) {
       console.error("Balance refresh error:", err);
@@ -239,13 +253,15 @@ export default function App() {
   }
 
   function togglePrivacy() {
-    setIsPrivacyOpen(prev => {
-      const next = !prev;
-      if (next) {
-        refreshBalances();
-      }
-      return next;
-    });
+    const next = !isPrivacyOpen;
+    setIsPrivacyOpen(next);
+    if (next) {
+      // Force the decrypt path because React state has not updated yet.
+      void refreshBalances(undefined, undefined, true);
+    } else {
+      setDecryptedBalance(null);
+      setBalanceHandle(null);
+    }
   }
 
   function handlePercentClick(percent: number) {
@@ -261,13 +277,14 @@ export default function App() {
       }
       setMintAmount(calculated.toFixed(4));
     } else {
-      const integerAmount = Math.floor(calculated);
+      const precision = Math.min(activeToken?.decimals ?? 4, 4);
+      const selectedAmount = Math.max(0, calculated).toFixed(precision);
       if (activeTab === "transfer") {
-        setTransferAmount(integerAmount.toString());
+        setTransferAmount(selectedAmount);
       } else if (activeTab === "approve") {
-        setApproveAmount(integerAmount.toString());
+        setApproveAmount(selectedAmount);
       } else if (activeTab === "unshield") {
-        setUnshieldAmount(integerAmount.toString());
+        setUnshieldAmount(selectedAmount);
       }
     }
     setSliderPercent(percent);
@@ -430,7 +447,7 @@ export default function App() {
       setActiveStep(1);
       setStatus("STEP 1: Amount is being encrypted on-client with homomorphic proof...");
 
-      const amountBigInt = BigInt(Math.floor(parseFloat(mintAmount)));
+      const amountBigInt = parseTokenAmount(mintAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -477,7 +494,7 @@ export default function App() {
       setActiveStep(1);
       setStatus("STEP 1: Transfer amount is being encrypted with FHE wrapper...");
 
-      const amountBigInt = BigInt(transferAmount);
+      const amountBigInt = parseTokenAmount(transferAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -523,7 +540,7 @@ export default function App() {
       setActiveStep(1);
       setStatus("STEP 1: Allowance limit is being encrypted...");
 
-      const amountBigInt = BigInt(approveAmount);
+      const amountBigInt = parseTokenAmount(approveAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -568,7 +585,7 @@ export default function App() {
       setActiveStep(1);
       setStatus("STEP 1: Burn/Unshield amount is being encrypted...");
 
-      const amountBigInt = BigInt(unshieldAmount);
+      const amountBigInt = parseTokenAmount(unshieldAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -595,7 +612,7 @@ export default function App() {
       };
       setTxLogs(prev => [newLog, ...prev]);
 
-      setStatus(`Successfully unshielded ${activeTokenSymbol} back to public!`);
+      setStatus(`Burned ${unshieldAmount} ${activeTokenSymbol} from the private balance. No public asset transfer is implemented by this contract.`);
       refreshBalances(provider, account);
       setIsPrivacyOpen(false);
     } catch (error: any) {
