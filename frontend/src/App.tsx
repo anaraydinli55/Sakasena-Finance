@@ -804,7 +804,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -880,7 +880,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -943,7 +943,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
