@@ -1,0 +1,35 @@
+name: Test Sakasena Finance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ["test/**"]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package.json
+      - run: npm install
+      - run: npm run build
+      # The existing repository-wide ESLint check currently reports 29 pre-existing errors; track and fix separately.
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx hardhat compile
+      - run: npx hardhat test

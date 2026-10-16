@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, formatEther, formatUnits } from "ethers";
+import { BrowserProvider, Contract, formatEther, formatUnits, parseUnits } from "ethers";
 import { FheTypes, Encryptable } from "@cofhe/sdk";
 import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
 import { Ethers6Adapter } from "@cofhe/sdk/adapters";
@@ -38,7 +38,7 @@ const baseSepoliaChain = {
 };
 
 const CONTRACT_ADDRESSES: { [chainId: number]: string } = {
-  11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+  11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
   421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",  
   84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"   
 };
@@ -49,6 +49,9 @@ const NETWORK_NAMES: { [chainId: number]: string } = {
   84532: "Base Sepolia"
 };
 
+// Fail closed until deployments and token/backing configuration are verified.
+const SECURE_DEPLOYMENT_VERIFIED = false;
+
 const CONTRACT_ABI = [
   "function balanceOf(address account) external view returns (uint256)",
   "function decimals() external view returns (uint8)",
@@ -58,6 +61,20 @@ const CONTRACT_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)",
   "function unshield((uint256 ctHash, uint8 securityZone, uint8 utype, bytes signature) amount) external"
 ];
+
+function parseTokenAmount(value: string, decimals: number): bigint {
+  const trimmed = value.trim();
+  if (!trimmed || !/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error("Enter a valid positive token amount.");
+  }
+  const amount = parseUnits(trimmed, decimals);
+  if (amount <= 0n) throw new Error("Amount must be greater than zero.");
+  const maxUint64 = (1n << 64n) - 1n;
+  if (amount > maxUint64) {
+    throw new Error("Amount exceeds the uint64 limit for this token.");
+  }
+  return amount;
+}
 
 interface TokenConfig {
   symbol: string;
@@ -87,7 +104,7 @@ export default function App() {
   const [sliderPercent, setSliderPercent] = useState<number>(0);
   
   const [cofheClient, setCofheClient] = useState<any | null>(null);
-  const [status, setStatus] = useState<string>("Please authorize your wallet to connect to Sakasena Finance.");
+  const [status, setStatus] = useState<string>("Connect your wallet to Sakasena Finance. Minting and redemption remain disabled until secure contracts are deployed and verified.");
   const [loading, setLoading] = useState<boolean>(false);
   const [txLogs, setTxLogs] = useState<TxLog[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
@@ -104,7 +121,7 @@ export default function App() {
         84532: "0x0000000000000000000000000000000000000000"
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -118,7 +135,7 @@ export default function App() {
         84532: "0x034934E2777df4c7F5b2df50D8A5890736173b9E"    
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -132,7 +149,7 @@ export default function App() {
         84532: "0x2222222222222222222222222222222222222222"
       },
       privateAddresses: {
-        11155111: "0x6F5f63D9724AD79Dae1348199aB6dbBF135a8Cc4",
+        11155111: "0x0566A77a6A89aB3319de725D0e55DEE47aF21a27",
         421614: "0x43F62bf115d07a32fe0537CE5b9b6eB61A36F483",
         84532: "0xA830acED3E05549d6FA2D71261cA4a4114279b13"
       },
@@ -153,7 +170,9 @@ export default function App() {
   const [unshieldAmount, setUnshieldAmount] = useState<string>("2");
 
   const activeToken = tokens.find(t => t.symbol === activeTokenSymbol);
-  const currentContractAddress = chainId && activeToken ? activeToken.privateAddresses[chainId] : null;
+  const currentContractAddress = SECURE_DEPLOYMENT_VERIFIED && chainId && activeToken
+    ? activeToken.privateAddresses[chainId]
+    : null;
 
   useEffect(() => {
     if ((window as any).ethereum) {
@@ -198,7 +217,7 @@ export default function App() {
   }, [mintAmount, transferAmount, approveAmount, unshieldAmount, activeTab, publicBalance, decryptedBalance]);
 
   // Bakiye Tazeleyici
-  async function refreshBalances(prov?: any, acc?: string) {
+  async function refreshBalances(prov?: any, acc?: string, forcePrivacy = false) {
     const activeProvider = prov || new BrowserProvider((window as any).ethereum);
     const activeAccount = acc || account;
     if (!activeAccount || !chainId || !activeToken) return;
@@ -222,7 +241,7 @@ export default function App() {
       }
 
       const privateAddress = activeToken.privateAddresses[chainId];
-      if (isPrivacyOpen && privateAddress && cofheClient) {
+      if (SECURE_DEPLOYMENT_VERIFIED && (isPrivacyOpen || forcePrivacy) && privateAddress && cofheClient) {
         const signer = await activeProvider.getSigner();
         const tokenContract = new Contract(privateAddress, CONTRACT_ABI, signer);
         const ctHandle = await tokenContract.balanceOf(activeAccount);
@@ -231,7 +250,7 @@ export default function App() {
         const balance = await cofheClient
           .decryptForView(ctHandle, FheTypes.Uint64)
           .execute();
-        setDecryptedBalance(balance.toString());
+        setDecryptedBalance(parseFloat(formatUnits(BigInt(balance.toString()), activeToken.decimals)).toFixed(4));
       }
     } catch (err) {
       console.error("Balance refresh error:", err);
@@ -239,13 +258,19 @@ export default function App() {
   }
 
   function togglePrivacy() {
-    setIsPrivacyOpen(prev => {
-      const next = !prev;
-      if (next) {
-        refreshBalances();
-      }
-      return next;
-    });
+    if (!SECURE_DEPLOYMENT_VERIFIED) {
+      setStatus("Private balance viewing is unavailable until the hardened contract deployment is verified.");
+      return;
+    }
+    const next = !isPrivacyOpen;
+    setIsPrivacyOpen(next);
+    if (next) {
+      // Force the decrypt path because React state has not updated yet.
+      void refreshBalances(undefined, undefined, true);
+    } else {
+      setDecryptedBalance(null);
+      setBalanceHandle(null);
+    }
   }
 
   function handlePercentClick(percent: number) {
@@ -261,13 +286,14 @@ export default function App() {
       }
       setMintAmount(calculated.toFixed(4));
     } else {
-      const integerAmount = Math.floor(calculated);
+      const precision = Math.min(activeToken?.decimals ?? 4, 4);
+      const selectedAmount = Math.max(0, calculated).toFixed(precision);
       if (activeTab === "transfer") {
-        setTransferAmount(integerAmount.toString());
+        setTransferAmount(selectedAmount);
       } else if (activeTab === "approve") {
-        setApproveAmount(integerAmount.toString());
+        setApproveAmount(selectedAmount);
       } else if (activeTab === "unshield") {
-        setUnshieldAmount(integerAmount.toString());
+        setUnshieldAmount(selectedAmount);
       }
     }
     setSliderPercent(percent);
@@ -275,40 +301,11 @@ export default function App() {
 
   // Dinamik Coin Ekleme
   async function handleAddCustomCoin() {
-    if (!newCoinAddress || !chainId) {
-      setStatus("Error: Please provide a valid contract address!");
-      return;
-    }
-    try {
-      setLoading(true);
-      setStatus("Fetching token metadata from the siber blockchain...");
-      
-      const provider = new BrowserProvider((window as any).ethereum);
-      const tempContract = new Contract(newCoinAddress, ["function symbol() external view returns (string)"], provider);
-      const symbol = await tempContract.symbol();
-      
-      const newConfig: TokenConfig = {
-        symbol: symbol,
-        publicAddresses: {
-          [chainId]: "0x0000000000000000000000000000000000000000"
-        },
-        privateAddresses: {
-          [chainId]: newCoinAddress
-        },
-        decimals: 18
-      };
-      
-      setTokens(prev => [...prev, newConfig]);
-      setActiveTokenSymbol(symbol);
-      setShowAddCoin(false);
-      setNewAddCoinAddress("");
-      setStatus(`Success: Automatically detected siber token symbol: ${symbol}!`);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: Failed to fetch siber token metadata! ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+    setShowAddCoin(false);
+    setNewAddCoinAddress("");
+    setStatus(
+      "Custom token addition is disabled until a verified private-token contract and matching backing-asset configuration are available."
+    );
   }
 
   function handleDisconnect() {
@@ -380,7 +377,16 @@ export default function App() {
       setChainId(currentChainId);
       setAccount(accounts[0]);
 
-      setStatus("CoFHE multi-chain siber cryptographic engine initializing...");
+      if (!NETWORK_NAMES[currentChainId]) {
+        setCofheClient(null);
+        setIsPrivacyOpen(false);
+        setDecryptedBalance(null);
+        setBalanceHandle(null);
+        setStatus(`Unsupported network (chain ID ${currentChainId}). Switch to Ethereum Sepolia, Arbitrum Sepolia, or Base Sepolia.`);
+        return;
+      }
+
+      setStatus("CoFHE multi-chain cryptographic engine initializing...");
       const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
 
       const config = createCofheConfig({
@@ -391,7 +397,7 @@ export default function App() {
       await client.connect(publicClient, walletClient);
 
       setCofheClient(client);
-      setStatus(`Connected to Sakasena. Active Network: ${NETWORK_NAMES[currentChainId] || "Unknown"}`);
+      setStatus(`Wallet connected on ${NETWORK_NAMES[currentChainId]}. Secure token operations are disabled until the hardened deployment and token configuration are verified.`);
       
       refreshBalances(provider, accounts[0]);
     } catch (error: any) {
@@ -424,60 +430,23 @@ export default function App() {
   }
 
   async function handleMint() {
-    if (!account || !cofheClient || !currentContractAddress) return;
-    try {
-      setLoading(true);
-      setActiveStep(1);
-      setStatus("STEP 1: Amount is being encrypted on-client with homomorphic proof...");
-
-      const amountBigInt = BigInt(Math.floor(parseFloat(mintAmount)));
-      const [encryptedAmount] = await cofheClient
-        .encryptInputs([Encryptable.uint64(amountBigInt)])
-        .execute();
-
-      setActiveStep(2);
-      setStatus("STEP 2: Preparing transaction package with signed ZK-Proof...");
-
-      setActiveStep(3);
-      setStatus("STEP 3: Submitting transaction to the blockchain. Wallet approval required...");
-      
-      const provider = new BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new Contract(currentContractAddress, CONTRACT_ABI, signer);
-
-      const tx = await tokenContract.mint(account, encryptedAmount);
-      setStatus(`Tx submitted: ${tx.hash.slice(0, 16)}... Onay bekleniyor...`);
-      await tx.wait();
-
-      const newLog: TxLog = {
-        id: Math.random().toString(),
-        type: "Mint",
-        amount: mintAmount,
-        target: account,
-        hash: tx.hash
-      };
-      setTxLogs(prev => [newLog, ...prev]);
-
-      setStatus(`Successfully shielded asset and minted ${activeTokenSymbol}!`);
-      refreshBalances(provider, account);
-      setIsPrivacyOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-      setActiveStep(null);
-    }
+    setStatus(
+      "Mint disabled: the secure owner-only contract source has not been redeployed to this address. No transaction was sent."
+    );
   }
 
   async function handleTransfer() {
+    if (!SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]) {
+      setStatus("Private transfer is disabled until a hardened contract is deployed and verified on a supported network.");
+      return;
+    }
     if (!account || !cofheClient || !transferTo || !currentContractAddress) return;
     try {
       setLoading(true);
       setActiveStep(1);
       setStatus("STEP 1: Transfer amount is being encrypted with FHE wrapper...");
 
-      const amountBigInt = BigInt(transferAmount);
+      const amountBigInt = parseTokenAmount(transferAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -517,13 +486,17 @@ export default function App() {
   }
 
   async function handleApprove() {
+    if (!SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]) {
+      setStatus("Confidential approvals are disabled until a hardened contract is deployed and verified on a supported network.");
+      return;
+    }
     if (!account || !cofheClient || !approveSpender || !currentContractAddress) return;
     try {
       setLoading(true);
       setActiveStep(1);
       setStatus("STEP 1: Allowance limit is being encrypted...");
 
-      const amountBigInt = BigInt(approveAmount);
+      const amountBigInt = parseTokenAmount(approveAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
         .encryptInputs([Encryptable.uint64(amountBigInt)])
         .execute();
@@ -562,49 +535,9 @@ export default function App() {
   }
 
   async function handleUnshield() {
-    if (!account || !cofheClient || !currentContractAddress) return;
-    try {
-      setLoading(true);
-      setActiveStep(1);
-      setStatus("STEP 1: Burn/Unshield amount is being encrypted...");
-
-      const amountBigInt = BigInt(unshieldAmount);
-      const [encryptedAmount] = await cofheClient
-        .encryptInputs([Encryptable.uint64(amountBigInt)])
-        .execute();
-
-      setActiveStep(2);
-      setStatus("STEP 2: Formulation burn & unshield signature payload...");
-
-      setActiveStep(3);
-      setStatus("STEP 3: Sending unshield command. Wallet approval required...");
-      const provider = new BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new Contract(currentContractAddress, CONTRACT_ABI, signer);
-
-      const tx = await tokenContract.unshield(encryptedAmount);
-      setStatus(`Tx submitted: ${tx.hash.slice(0, 16)}... Confirming...`);
-      await tx.wait();
-
-      const newLog: TxLog = {
-        id: Math.random().toString(),
-        type: "Unshield",
-        amount: unshieldAmount,
-        target: account,
-        hash: tx.hash
-      };
-      setTxLogs(prev => [newLog, ...prev]);
-
-      setStatus(`Successfully unshielded ${activeTokenSymbol} back to public!`);
-      refreshBalances(provider, account);
-      setIsPrivacyOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-      setActiveStep(null);
-    }
+    setStatus(
+      "Redemption is disabled: this deployment has no verified reserve-backed withdrawal adapter. No tokens were burned and no assets were transferred."
+    );
   }
 
   return (
@@ -629,6 +562,7 @@ export default function App() {
               <option value={11155111}>Ethereum Sepolia</option>
               <option value={421614}>Arbitrum Sepolia</option>
               <option value={84532}>Base Sepolia</option>
+              {chainId !== null && !NETWORK_NAMES[chainId] && <option value={chainId}>Unsupported Network (chain ID {chainId})</option>}
             </select>
           )}
 
@@ -685,8 +619,8 @@ export default function App() {
               <span style={{ color: "var(--text-primary)" }}>Shield Your Assets.</span>
             </h1>
             <p className="hero-desc">
-              True on-chain privacy with FHERC20, powered by Fhenix CoFHE.
-              Encrypted balances, private transfers, and secure withdrawals in one interface.
+              FHERC20-style privacy powered by Fhenix CoFHE.
+              Token operations stay disabled until the contract deployment and token configuration are independently verified.
             </p>
 
             <div className="badge-row">
@@ -708,13 +642,13 @@ export default function App() {
                   {activeTab === "unshield" && `Unshield ${activeTokenSymbol}`}
                 </h3>
                 <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                  {activeTab === "mint" && `Mint encrypted Sakasena ${activeTokenSymbol} tokens.`}
+                  {activeTab === "mint" && `Shielding is unavailable until a verified deposit flow and hardened contract are deployed.`}
                   {activeTab === "transfer" && `Transfer encrypted ${activeTokenSymbol} tokens privately.`}
                   {activeTab === "approve" && `Set confidential allowances for other spenders.`}
-                  {activeTab === "unshield" && `Unshield (burn) ${activeTokenSymbol} back to public.`}
+                  {activeTab === "unshield" && `Redemption is disabled; no public assets are returned by the current deployment.`}
                 </p>
                 <p style={{ fontSize: "11px", color: "var(--color-primary)", fontWeight: "600", marginTop: "8px", letterSpacing: "1px" }}>
-                  BALANCE: {isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}
+                  {SECURE_DEPLOYMENT_VERIFIED ? `BALANCE: ${isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}` : "PRIVATE BALANCE: unavailable — contract not verified"}
                 </p>
               </div>
 
@@ -722,8 +656,8 @@ export default function App() {
               <button 
                 className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
                 onClick={togglePrivacy}
-                disabled={loading}
-                title={isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
+                disabled={loading || !SECURE_DEPLOYMENT_VERIFIED}
+                title={!SECURE_DEPLOYMENT_VERIFIED ? "Private balance viewing is unavailable until deployment verification" : isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
                 style={{ display: "flex", alignItems: "center", gap: "8px", width: "auto", padding: "8px 12px", borderRadius: "6px" }}
               >
                 {isPrivacyOpen ? (
@@ -765,7 +699,7 @@ export default function App() {
               <div>
                 <div className="deposit-box">
                   <div className="deposit-header">
-                    <span>You Deposit</span>
+                    <span>Amount (shielding unavailable)</span>
                     <span>{activeTokenSymbol} Token</span>
                   </div>
                   <div className="deposit-input-row">
@@ -789,7 +723,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -809,7 +743,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -820,7 +754,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {publicBalance ? `${publicBalance} ${activeTokenSymbol === "sakETH" ? "ETH" : activeTokenSymbol.replace("sak", "")}` : "••••"}</span>
+                    <span>Wallet ETH balance: {publicBalance ?? "—"} ETH (not a deposit)</span>
                     {account && (
                       <span style={{ color: "var(--color-accent)", cursor: "pointer" }} onClick={() => setMintAmount("100")}>MAX</span>
                     )}
@@ -868,7 +802,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -888,7 +822,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -899,7 +833,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
+                    <span>Private balance: unavailable until contract deployment is verified</span>
                   </div>
                 </div>
               </div>
@@ -944,7 +878,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -964,7 +898,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -983,7 +917,7 @@ export default function App() {
               <div>
                 <div className="deposit-box">
                   <div className="deposit-header">
-                    <span>Unshield Amount</span>
+                    <span>Redeem Amount (currently unavailable)</span>
                     <span>{activeTokenSymbol} Token</span>
                   </div>
                   <div className="deposit-input-row">
@@ -1007,7 +941,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -1027,7 +961,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -1038,7 +972,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
+                    <span>Private balance: unavailable until contract deployment is verified</span>
                   </div>
                 </div>
               </div>
@@ -1060,7 +994,7 @@ export default function App() {
               </div>
             )}
 
-            {account && (
+            {account && SECURE_DEPLOYMENT_VERIFIED && (
               <div className="steps-container">
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>
                   Sakasena Steps
@@ -1097,27 +1031,27 @@ export default function App() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {activeTab === "mint" && (
-                  <button className="btn-primary" onClick={handleMint} disabled={loading}>
+                  <button className="btn-primary" onClick={handleMint} disabled={true} title="Secure owner-only contract must be deployed and verified first">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Shield Asset (Mint)
+                    Mint unavailable — secure redeployment required
                   </button>
                 )}
                 {activeTab === "transfer" && (
-                  <button className="btn-primary" style={{ background: "var(--color-accent)", boxShadow: "0 4px 12px rgba(0, 245, 255, 0.2)" }} onClick={handleTransfer} disabled={loading}>
+                  <button className="btn-primary" style={{ background: "var(--color-accent)", boxShadow: "0 4px 12px rgba(0, 245, 255, 0.2)" }} onClick={handleTransfer} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Send Privately
+                    Send Privately — unavailable
                   </button>
                 )}
                 {activeTab === "approve" && (
-                  <button className="btn-primary" onClick={handleApprove} disabled={loading}>
+                  <button className="btn-primary" onClick={handleApprove} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Authorize Spender
+                    Authorize Spender — unavailable
                   </button>
                 )}
                 {activeTab === "unshield" && (
-                  <button className="btn-primary" onClick={handleUnshield} disabled={loading} style={{ background: "red", color: "#fff", boxShadow: "0 4px 12px rgba(255, 0, 0, 0.2)" }}>
+                  <button className="btn-primary" onClick={handleUnshield} disabled={true} title="Real asset redemption is not implemented" style={{ background: "#555", color: "#fff", boxShadow: "none", cursor: "not-allowed" }}>
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Unshield Asset (Burn)
+                    Redemption unavailable
                   </button>
                 )}
               </div>
@@ -1130,9 +1064,9 @@ export default function App() {
               <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "8px", fontFamily: "monospace" }}>
                 &gt; {status}
               </p>
-              {chainId && (
-                <p style={{ fontSize: "11px", color: "var(--color-primary)", marginTop: "4px", fontFamily: "monospace" }}>
-                  &gt; Active Network: {NETWORK_NAMES[chainId] || "Unsupported Network"}
+              {chainId !== null && (
+                <p style={{ fontSize: "11px", color: NETWORK_NAMES[chainId] ? "var(--color-primary)" : "#ff7676", marginTop: "4px", fontFamily: "monospace" }}>
+                  &gt; Active Network: {NETWORK_NAMES[chainId] || `Unsupported Network (chain ID ${chainId})`}
                 </p>
               )}
             </div>
@@ -1143,7 +1077,7 @@ export default function App() {
           <div className="activity-box">
             <h3 className="activity-header">Recent activity</h3>
             <p className="activity-desc">
-              Local history for the current wallet session. Mint, transfer, and approve events appear here after each transaction completes.
+              Local history for the current wallet session. Events appear here only after a transaction completes; secure token transactions are currently disabled.
             </p>
 
             {txLogs.length === 0 ? (
