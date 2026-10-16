@@ -1027,13 +1027,13 @@ export default function App() {
                   </button>
                 )}
                 {activeTab === "transfer" && (
-                  <button className="btn-primary" style={{ background: "var(--color-accent)", boxShadow: "0 4px 12px rgba(0, 245, 255, 0.2)" }} onClick={handleTransfer} disabled={loading}>
+                  <button className="btn-primary" style={{ background: "var(--color-accent)", boxShadow: "0 4px 12px rgba(0, 245, 255, 0.2)" }} onClick={handleTransfer} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
                     Send Privately
                   </button>
                 )}
                 {activeTab === "approve" && (
-                  <button className="btn-primary" onClick={handleApprove} disabled={loading}>
+                  <button className="btn-primary" onClick={handleApprove} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
                     Authorize Spender
                   </button>
