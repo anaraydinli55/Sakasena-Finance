@@ -36,7 +36,7 @@ contract ConfidentialERC20 is Ownable {
     function mint(
         address to,
         InEuint64 memory amount
-    ) public {
+    ) public onlyOwner {
         euint64 encryptedAmount = FHE.asEuint64(amount);
 
         balances[to] = FHE.add(balances[to], encryptedAmount);
@@ -122,19 +122,14 @@ contract ConfidentialERC20 is Ownable {
         return true;
     }
 
-    // ?? SAFE UNSHIELD (FHE Mimarisine Tam Uyumlu Sifreli Yakma/Geri Çekme)
+    /// @notice Disabled until a verified redemption adapter can return real ERC-20 assets.
+    /// @dev This function intentionally never burns private balances or claims a withdrawal.
+    ///      Encrypted amounts cannot safely determine a public ERC-20 transfer amount without
+    ///      a verified decryption/proof and reserve-accounting flow.
     function unshield(
         InEuint64 memory encryptedAmount
-    ) public {
-        euint64 amount = FHE.asEuint64(encryptedAmount);
-
-        balances[msg.sender] = FHE.sub(balances[msg.sender], amount);
-        totalSupply = FHE.sub(totalSupply, amount);
-
-        FHE.allowThis(balances[msg.sender]);
-        FHE.allow(balances[msg.sender], msg.sender);
-        FHE.allowThis(totalSupply);
-
-        emit Unshield(msg.sender);
+    ) public pure {
+        encryptedAmount;
+        revert("Unshield disabled: real asset redemption is not implemented");
     }
 }
