@@ -43,7 +43,6 @@ contract ConfidentialERC20 is Ownable {
         totalSupply = FHE.add(totalSupply, encryptedAmount);
 
         FHE.allowThis(balances[to]);
-        FHE.allowSender(balances[to]);
         FHE.allow(balances[to], to);
 
         FHE.allowThis(totalSupply);
