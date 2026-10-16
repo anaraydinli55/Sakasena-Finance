@@ -833,7 +833,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
+                    <span>Private balance: unavailable until contract deployment is verified</span>
                   </div>
                 </div>
               </div>
@@ -972,7 +972,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {isPrivacyOpen && decryptedBalance !== null ? decryptedBalance : "••••"}</span>
+                    <span>Private balance: unavailable until contract deployment is verified</span>
                   </div>
                 </div>
               </div>
