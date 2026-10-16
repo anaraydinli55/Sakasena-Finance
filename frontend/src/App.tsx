@@ -445,7 +445,7 @@ export default function App() {
     try {
       setLoading(true);
       setActiveStep(1);
-      setStatus("STEP 1: Amount is being encrypted on-client with homomorphic proof...");
+      setStatus("STEP 1: Owner-only private token mint. This does not deposit or lock real assets.");
 
       const amountBigInt = parseTokenAmount(mintAmount, activeToken?.decimals ?? 18);
       const [encryptedAmount] = await cofheClient
@@ -475,7 +475,7 @@ export default function App() {
       };
       setTxLogs(prev => [newLog, ...prev]);
 
-      setStatus(`Successfully shielded asset and minted ${activeTokenSymbol}!`);
+      setStatus(`Minted ${activeTokenSymbol} privately. This is owner-only minting, not a backed deposit or shield operation.`);
       refreshBalances(provider, account);
       setIsPrivacyOpen(false);
     } catch (error: any) {
@@ -579,49 +579,9 @@ export default function App() {
   }
 
   async function handleUnshield() {
-    if (!account || !cofheClient || !currentContractAddress) return;
-    try {
-      setLoading(true);
-      setActiveStep(1);
-      setStatus("STEP 1: Burn/Unshield amount is being encrypted...");
-
-      const amountBigInt = parseTokenAmount(unshieldAmount, activeToken?.decimals ?? 18);
-      const [encryptedAmount] = await cofheClient
-        .encryptInputs([Encryptable.uint64(amountBigInt)])
-        .execute();
-
-      setActiveStep(2);
-      setStatus("STEP 2: Formulation burn & unshield signature payload...");
-
-      setActiveStep(3);
-      setStatus("STEP 3: Sending unshield command. Wallet approval required...");
-      const provider = new BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new Contract(currentContractAddress, CONTRACT_ABI, signer);
-
-      const tx = await tokenContract.unshield(encryptedAmount);
-      setStatus(`Tx submitted: ${tx.hash.slice(0, 16)}... Confirming...`);
-      await tx.wait();
-
-      const newLog: TxLog = {
-        id: Math.random().toString(),
-        type: "Unshield",
-        amount: unshieldAmount,
-        target: account,
-        hash: tx.hash
-      };
-      setTxLogs(prev => [newLog, ...prev]);
-
-      setStatus(`Burned ${unshieldAmount} ${activeTokenSymbol} from the private balance. No public asset transfer is implemented by this contract.`);
-      refreshBalances(provider, account);
-      setIsPrivacyOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-      setActiveStep(null);
-    }
+    setStatus(
+      "Redemption is disabled: this deployment has no verified reserve-backed withdrawal adapter. No tokens were burned and no assets were transferred."
+    );
   }
 
   return (
@@ -1000,7 +960,7 @@ export default function App() {
               <div>
                 <div className="deposit-box">
                   <div className="deposit-header">
-                    <span>Unshield Amount</span>
+                    <span>Redeem Amount (currently unavailable)</span>
                     <span>{activeTokenSymbol} Token</span>
                   </div>
                   <div className="deposit-input-row">
@@ -1116,7 +1076,7 @@ export default function App() {
                 {activeTab === "mint" && (
                   <button className="btn-primary" onClick={handleMint} disabled={loading}>
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Shield Asset (Mint)
+                    Mint Private Tokens (Owner only; not a deposit)
                   </button>
                 )}
                 {activeTab === "transfer" && (
@@ -1132,9 +1092,9 @@ export default function App() {
                   </button>
                 )}
                 {activeTab === "unshield" && (
-                  <button className="btn-primary" onClick={handleUnshield} disabled={loading} style={{ background: "red", color: "#fff", boxShadow: "0 4px 12px rgba(255, 0, 0, 0.2)" }}>
+                  <button className="btn-primary" onClick={handleUnshield} disabled={true} title="Real asset redemption is not implemented" style={{ background: "#555", color: "#fff", boxShadow: "none", cursor: "not-allowed" }}>
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Unshield Asset (Burn)
+                    Redemption unavailable
                   </button>
                 )}
               </div>
