@@ -49,6 +49,9 @@ const NETWORK_NAMES: { [chainId: number]: string } = {
   84532: "Base Sepolia"
 };
 
+// Fail closed until deployments and token/backing configuration are verified.
+const SECURE_DEPLOYMENT_VERIFIED = false;
+
 const CONTRACT_ABI = [
   "function balanceOf(address account) external view returns (uint256)",
   "function decimals() external view returns (uint8)",
@@ -167,7 +170,9 @@ export default function App() {
   const [unshieldAmount, setUnshieldAmount] = useState<string>("2");
 
   const activeToken = tokens.find(t => t.symbol === activeTokenSymbol);
-  const currentContractAddress = chainId && activeToken ? activeToken.privateAddresses[chainId] : null;
+  const currentContractAddress = SECURE_DEPLOYMENT_VERIFIED && chainId && activeToken
+    ? activeToken.privateAddresses[chainId]
+    : null;
 
   useEffect(() => {
     if ((window as any).ethereum) {
@@ -236,7 +241,7 @@ export default function App() {
       }
 
       const privateAddress = activeToken.privateAddresses[chainId];
-      if ((isPrivacyOpen || forcePrivacy) && privateAddress && cofheClient) {
+      if (SECURE_DEPLOYMENT_VERIFIED && (isPrivacyOpen || forcePrivacy) && privateAddress && cofheClient) {
         const signer = await activeProvider.getSigner();
         const tokenContract = new Contract(privateAddress, CONTRACT_ABI, signer);
         const ctHandle = await tokenContract.balanceOf(activeAccount);
@@ -253,6 +258,10 @@ export default function App() {
   }
 
   function togglePrivacy() {
+    if (!SECURE_DEPLOYMENT_VERIFIED) {
+      setStatus("Private balance viewing is unavailable until the hardened contract deployment is verified.");
+      return;
+    }
     const next = !isPrivacyOpen;
     setIsPrivacyOpen(next);
     if (next) {
@@ -388,7 +397,7 @@ export default function App() {
       await client.connect(publicClient, walletClient);
 
       setCofheClient(client);
-      setStatus(`Connected to Sakasena. Active Network: ${NETWORK_NAMES[currentChainId] || "Unknown"}`);
+      setStatus(`Wallet connected on ${NETWORK_NAMES[currentChainId]}. Secure token operations are disabled until the hardened deployment and token configuration are verified.`);
       
       refreshBalances(provider, accounts[0]);
     } catch (error: any) {
@@ -553,6 +562,7 @@ export default function App() {
               <option value={11155111}>Ethereum Sepolia</option>
               <option value={421614}>Arbitrum Sepolia</option>
               <option value={84532}>Base Sepolia</option>
+              {chainId !== null && !NETWORK_NAMES[chainId] && <option value={chainId}>Unsupported Network (chain ID {chainId})</option>}
             </select>
           )}
 
@@ -609,8 +619,8 @@ export default function App() {
               <span style={{ color: "var(--text-primary)" }}>Shield Your Assets.</span>
             </h1>
             <p className="hero-desc">
-              True on-chain privacy with FHERC20, powered by Fhenix CoFHE.
-              Encrypted balances, private transfers, and secure withdrawals in one interface.
+              FHERC20-style privacy powered by Fhenix CoFHE.
+              Token operations stay disabled until the contract deployment and token configuration are independently verified.
             </p>
 
             <div className="badge-row">
@@ -632,13 +642,13 @@ export default function App() {
                   {activeTab === "unshield" && `Unshield ${activeTokenSymbol}`}
                 </h3>
                 <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                  {activeTab === "mint" && `Mint encrypted Sakasena ${activeTokenSymbol} tokens.`}
+                  {activeTab === "mint" && `Shielding is unavailable until a verified deposit flow and hardened contract are deployed.`}
                   {activeTab === "transfer" && `Transfer encrypted ${activeTokenSymbol} tokens privately.`}
                   {activeTab === "approve" && `Set confidential allowances for other spenders.`}
-                  {activeTab === "unshield" && `Unshield (burn) ${activeTokenSymbol} back to public.`}
+                  {activeTab === "unshield" && `Redemption is disabled; no public assets are returned by the current deployment.`}
                 </p>
                 <p style={{ fontSize: "11px", color: "var(--color-primary)", fontWeight: "600", marginTop: "8px", letterSpacing: "1px" }}>
-                  BALANCE: {isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}
+                  {SECURE_DEPLOYMENT_VERIFIED ? `BALANCE: ${isPrivacyOpen && decryptedBalance !== null ? `${decryptedBalance} ${activeTokenSymbol}` : `•••• ${activeTokenSymbol}`}` : "PRIVATE BALANCE: unavailable — contract not verified"}
                 </p>
               </div>
 
@@ -646,8 +656,8 @@ export default function App() {
               <button 
                 className={`privacy-toggle ${isPrivacyOpen ? "active" : ""}`} 
                 onClick={togglePrivacy}
-                disabled={loading}
-                title={isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
+                disabled={loading || !SECURE_DEPLOYMENT_VERIFIED}
+                title={!SECURE_DEPLOYMENT_VERIFIED ? "Private balance viewing is unavailable until deployment verification" : isPrivacyOpen ? "Hide" : "Decrypt & View Balance"}
                 style={{ display: "flex", alignItems: "center", gap: "8px", width: "auto", padding: "8px 12px", borderRadius: "6px" }}
               >
                 {isPrivacyOpen ? (
@@ -689,7 +699,7 @@ export default function App() {
               <div>
                 <div className="deposit-box">
                   <div className="deposit-header">
-                    <span>You Deposit</span>
+                    <span>Amount (shielding unavailable)</span>
                     <span>{activeTokenSymbol} Token</span>
                   </div>
                   <div className="deposit-input-row">
@@ -744,7 +754,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", fontWeight: "600" }}>
-                    <span>Balance: {publicBalance ? `${publicBalance} ${activeTokenSymbol === "sakETH" ? "ETH" : activeTokenSymbol.replace("sak", "")}` : "••••"}</span>
+                    <span>Wallet ETH balance: {publicBalance ?? "—"} ETH (not a deposit)</span>
                     {account && (
                       <span style={{ color: "var(--color-accent)", cursor: "pointer" }} onClick={() => setMintAmount("100")}>MAX</span>
                     )}
@@ -984,7 +994,7 @@ export default function App() {
               </div>
             )}
 
-            {account && (
+            {account && SECURE_DEPLOYMENT_VERIFIED && (
               <div className="steps-container">
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>
                   Sakasena Steps
@@ -1029,13 +1039,13 @@ export default function App() {
                 {activeTab === "transfer" && (
                   <button className="btn-primary" style={{ background: "var(--color-accent)", boxShadow: "0 4px 12px rgba(0, 245, 255, 0.2)" }} onClick={handleTransfer} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Send Privately
+                    Send Privately — unavailable
                   </button>
                 )}
                 {activeTab === "approve" && (
                   <button className="btn-primary" onClick={handleApprove} disabled={loading || !SECURE_DEPLOYMENT_VERIFIED || !NETWORK_NAMES[chainId ?? -1]} title="Verified secure deployment required">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Authorize Spender
+                    Authorize Spender — unavailable
                   </button>
                 )}
                 {activeTab === "unshield" && (
@@ -1054,9 +1064,9 @@ export default function App() {
               <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "8px", fontFamily: "monospace" }}>
                 &gt; {status}
               </p>
-              {chainId && (
-                <p style={{ fontSize: "11px", color: "var(--color-primary)", marginTop: "4px", fontFamily: "monospace" }}>
-                  &gt; Active Network: {NETWORK_NAMES[chainId] || "Unsupported Network"}
+              {chainId !== null && (
+                <p style={{ fontSize: "11px", color: NETWORK_NAMES[chainId] ? "var(--color-primary)" : "#ff7676", marginTop: "4px", fontFamily: "monospace" }}>
+                  &gt; Active Network: {NETWORK_NAMES[chainId] || `Unsupported Network (chain ID ${chainId})`}
                 </p>
               )}
             </div>
@@ -1067,7 +1077,7 @@ export default function App() {
           <div className="activity-box">
             <h3 className="activity-header">Recent activity</h3>
             <p className="activity-desc">
-              Local history for the current wallet session. Mint, transfer, and approve events appear here after each transaction completes.
+              Local history for the current wallet session. Events appear here only after a transaction completes; secure token transactions are currently disabled.
             </p>
 
             {txLogs.length === 0 ? (
