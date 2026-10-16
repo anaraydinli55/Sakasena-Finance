@@ -292,40 +292,11 @@ export default function App() {
 
   // Dinamik Coin Ekleme
   async function handleAddCustomCoin() {
-    if (!newCoinAddress || !chainId) {
-      setStatus("Error: Please provide a valid contract address!");
-      return;
-    }
-    try {
-      setLoading(true);
-      setStatus("Fetching token metadata from the siber blockchain...");
-      
-      const provider = new BrowserProvider((window as any).ethereum);
-      const tempContract = new Contract(newCoinAddress, ["function symbol() external view returns (string)"], provider);
-      const symbol = await tempContract.symbol();
-      
-      const newConfig: TokenConfig = {
-        symbol: symbol,
-        publicAddresses: {
-          [chainId]: "0x0000000000000000000000000000000000000000"
-        },
-        privateAddresses: {
-          [chainId]: newCoinAddress
-        },
-        decimals: 18
-      };
-      
-      setTokens(prev => [...prev, newConfig]);
-      setActiveTokenSymbol(symbol);
-      setShowAddCoin(false);
-      setNewAddCoinAddress("");
-      setStatus(`Success: Automatically detected siber token symbol: ${symbol}!`);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: Failed to fetch siber token metadata! ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+    setShowAddCoin(false);
+    setNewAddCoinAddress("");
+    setStatus(
+      "Custom token addition is disabled until a verified private-token contract and matching backing-asset configuration are available."
+    );
   }
 
   function handleDisconnect() {
@@ -745,7 +716,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -824,7 +795,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -900,7 +871,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
@@ -963,7 +934,7 @@ export default function App() {
                             className="sidebar-link" 
                             style={{ fontSize: "12px", padding: "8px", background: "transparent", border: "none", color: "var(--color-accent)", textAlign: "left", width: "100%", cursor: "pointer", fontWeight: "700" }}
                             onClick={() => {
-                              setShowAddCoin(true);
+                              setStatus("Custom tokens are unavailable until a verified private contract and backing asset are configured.");
                               setShowTokenSelect(false);
                             }}
                           >
