@@ -32,3 +32,4 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npx hardhat compile
+      - run: npx hardhat test
