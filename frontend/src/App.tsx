@@ -101,7 +101,7 @@ export default function App() {
   const [sliderPercent, setSliderPercent] = useState<number>(0);
   
   const [cofheClient, setCofheClient] = useState<any | null>(null);
-  const [status, setStatus] = useState<string>("Please authorize your wallet to connect to Sakasena Finance.");
+  const [status, setStatus] = useState<string>("Connect your wallet to Sakasena Finance. Minting and redemption remain disabled until secure contracts are deployed and verified.");
   const [loading, setLoading] = useState<boolean>(false);
   const [txLogs, setTxLogs] = useState<TxLog[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
@@ -441,50 +441,9 @@ export default function App() {
   }
 
   async function handleMint() {
-    if (!account || !cofheClient || !currentContractAddress) return;
-    try {
-      setLoading(true);
-      setActiveStep(1);
-      setStatus("STEP 1: Owner-only private token mint. This does not deposit or lock real assets.");
-
-      const amountBigInt = parseTokenAmount(mintAmount, activeToken?.decimals ?? 18);
-      const [encryptedAmount] = await cofheClient
-        .encryptInputs([Encryptable.uint64(amountBigInt)])
-        .execute();
-
-      setActiveStep(2);
-      setStatus("STEP 2: Preparing transaction package with signed ZK-Proof...");
-
-      setActiveStep(3);
-      setStatus("STEP 3: Submitting transaction to the blockchain. Wallet approval required...");
-      
-      const provider = new BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new Contract(currentContractAddress, CONTRACT_ABI, signer);
-
-      const tx = await tokenContract.mint(account, encryptedAmount);
-      setStatus(`Tx submitted: ${tx.hash.slice(0, 16)}... Onay bekleniyor...`);
-      await tx.wait();
-
-      const newLog: TxLog = {
-        id: Math.random().toString(),
-        type: "Mint",
-        amount: mintAmount,
-        target: account,
-        hash: tx.hash
-      };
-      setTxLogs(prev => [newLog, ...prev]);
-
-      setStatus(`Minted ${activeTokenSymbol} privately. This is owner-only minting, not a backed deposit or shield operation.`);
-      refreshBalances(provider, account);
-      setIsPrivacyOpen(false);
-    } catch (error: any) {
-      console.error(error);
-      setStatus(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-      setActiveStep(null);
-    }
+    setStatus(
+      "Mint disabled: the secure owner-only contract source has not been redeployed to this address. No transaction was sent."
+    );
   }
 
   async function handleTransfer() {
@@ -766,7 +725,7 @@ export default function App() {
                       </button>
                       {showTokenSelect && (
                         <div className="glass-panel" style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", padding: "8px", zIndex: 20, display: "flex", flexDirection: "column", minWidth: "120px" }}>
-                          {tokens.map(t => (
+                          {tokens.filter(t => t.symbol !== "sakUSDC" && t.symbol !== "sakUSDT").map(t => (
                             <button 
                               key={t.symbol} 
                               className="sidebar-link" 
@@ -1074,9 +1033,9 @@ export default function App() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {activeTab === "mint" && (
-                  <button className="btn-primary" onClick={handleMint} disabled={loading}>
+                  <button className="btn-primary" onClick={handleMint} disabled={true} title="Secure owner-only contract must be deployed and verified first">
                     {loading && <div className="spinner" style={{ marginRight: "8px" }}></div>}
-                    Mint Private Tokens (Owner only; not a deposit)
+                    Mint unavailable — secure redeployment required
                   </button>
                 )}
                 {activeTab === "transfer" && (
