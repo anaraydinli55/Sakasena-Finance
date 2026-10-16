@@ -5,7 +5,7 @@ describe("ConfidentialERC20 security guards", function () {
   async function deployToken() {
     const [owner, attacker] = await ethers.getSigners();
     const Token = await ethers.getContractFactory("ConfidentialERC20");
-    const token = await Token.deploy();
+    const token: any = await Token.deploy();
     await token.waitForDeployment();
     return { token, owner, attacker };
   }
